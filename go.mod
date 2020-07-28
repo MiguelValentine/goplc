@@ -1,3 +1,2 @@
-module github.com/MiguelValentine/go-ethernet-ip
-
+module github.com/MiguelValentine/GoPlc
 go 1.14
