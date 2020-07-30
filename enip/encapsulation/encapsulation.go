@@ -56,7 +56,7 @@ func (c *cpf) isCmd(cmd string) bool {
 	return ok
 }
 
-func (c *cpf) build(dataItems []cpfDataItem) *bytes.Buffer {
+func (c *cpf) build(dataItems []*cpfDataItem) *bytes.Buffer {
 	var buf bytes.Buffer
 	_ = binary.Write(&buf, binary.LittleEndian, uint16(len(dataItems)))
 
@@ -78,11 +78,39 @@ func (c *cpf) build(dataItems []cpfDataItem) *bytes.Buffer {
 	return &buf
 }
 
-func (c *cpf) parse(buf *bytes.Buffer) {
+func (c *cpf) parse(buf *bytes.Buffer) []*cpfDataItem {
+	itemCountB := make([]byte, 2)
+	_ = binary.Read(buf, binary.BigEndian, itemCountB)
 
+	itemCount := binary.LittleEndian.Uint16(itemCountB)
+
+	var result []*cpfDataItem
+
+	for i := uint16(0); i < itemCount; i++ {
+		TypeIDB := make([]byte, 2)
+		_ = binary.Read(buf, binary.BigEndian, TypeIDB)
+		TypeID := binary.LittleEndian.Uint16(TypeIDB)
+
+		lengthB := make([]byte, 2)
+		_ = binary.Read(buf, binary.BigEndian, lengthB)
+		length := binary.LittleEndian.Uint16(lengthB)
+
+		data := make([]byte, length)
+		_ = binary.Read(buf, binary.BigEndian, data)
+
+		item := &cpfDataItem{}
+		item.TypeID = TypeID
+		item.data = bytes.NewBuffer(data)
+		result = append(result, item)
+	}
+
+	return result
 }
 
 var CPF *cpf
+
+type header struct {
+}
 
 func init() {
 	CPF := &cpf{}
