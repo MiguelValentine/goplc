@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/MiguelValentine/goplc/enip/cip/dataTypes"
-	"github.com/MiguelValentine/goplc/enip/cip/epath/messageRouter"
 	"github.com/MiguelValentine/goplc/enip/cip/epath/segments/data"
 	"github.com/MiguelValentine/goplc/enip/cip/epath/segments/logical"
 	"github.com/MiguelValentine/goplc/enip/cip/epath/segments/port"
-	"log"
+	"github.com/MiguelValentine/goplc/enip/cip/messageRouter"
+	"github.com/MiguelValentine/goplc/enip/cip/unconnectedSend"
 	"testing"
 )
 
@@ -119,9 +119,18 @@ func TestMessageRouterParse(t *testing.T) {
 	var testBuffer bytes.Buffer
 	testData := []byte{0x01, 0, 0x01, 0x02, 0x16, 0x16, 0x17, 0x17, 0x99, 0xff, 0xff, 0xff}
 	_ = binary.Write(&testBuffer, binary.BigEndian, testData)
-	msg := messageRouter.Parse(&testBuffer)
-	log.Printf("%+v\n", msg)
-	log.Printf("%x\n", msg.Data)
+	messageRouter.Parse(&testBuffer)
+}
+
+func TestUnconnectedSendTimeout(t *testing.T) {
+	a, b := unconnectedSend.GenerateEncodedTimeout(10000)
+	if a != 8 || b != 39 {
+		t.Error()
+	}
+}
+
+func TestUnconnectedSendBuild(t *testing.T) {
+
 }
 
 func TestMessageBuild(t *testing.T) {
