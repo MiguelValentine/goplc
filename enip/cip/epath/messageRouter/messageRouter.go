@@ -69,26 +69,32 @@ type MessageRouter struct {
 	GeneralStatusCode    uint8
 	ExtendedStatusLength uint8
 	ExtendedStatus       []uint16
-	data                 *bytes.Buffer
+	Data                 *bytes.Buffer
 }
 
-//func Parse(buf *bytes.Buffer) *MessageRouter{
-//	result := MessageRouter{}
-//	serviceCode := make([]byte,2)
-//	_,_ = buf.Read(serviceCode)
-//	generalStatusCode := make([]byte,1)
-//	_,_ = buf.Read(generalStatusCode)
-//	extendedStatusLength := make([]byte,1)
-//	_,_ = buf.Read(extendedStatusLength)
-//
-//	result.Service = ServicesMap[serviceCode[0]]
-//	result.GeneralStatusCode = generalStatusCode[0]
-//	result.ExtendedStatusLength = extendedStatusLength[0]
-//
-//	for i := uint8(0); i < result.ExtendedStatusLength; i++ {
-//		binary.
-//		result.ExtendedStatus = append(result.ExtendedStatus, )
-//	}
-//
-//	return &result
-//}
+func Parse(buf *bytes.Buffer) *MessageRouter {
+	result := MessageRouter{}
+
+	serviceCode := make([]byte, 2)
+	_ = binary.Read(buf, binary.BigEndian, serviceCode)
+
+	generalStatusCode := make([]byte, 1)
+	_ = binary.Read(buf, binary.BigEndian, generalStatusCode)
+
+	extendedStatusLength := make([]byte, 1)
+	_ = binary.Read(buf, binary.BigEndian, extendedStatusLength)
+
+	result.Service = ServicesMap[serviceCode[0]]
+	result.GeneralStatusCode = generalStatusCode[0]
+	result.ExtendedStatusLength = extendedStatusLength[0]
+
+	for i := uint8(0); i < result.ExtendedStatusLength; i++ {
+		status := make([]byte, 2)
+		_ = binary.Read(buf, binary.BigEndian, status)
+		result.ExtendedStatus = append(result.ExtendedStatus, binary.LittleEndian.Uint16(status))
+	}
+
+	result.Data = buf
+
+	return &result
+}
