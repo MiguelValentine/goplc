@@ -122,6 +122,19 @@ func TestMessageRouterParse(t *testing.T) {
 	messageRouter.Parse(&testBuffer)
 }
 
+func TestMessageRouterBuild(t *testing.T) {
+	var path bytes.Buffer
+	_ = binary.Write(&path, binary.BigEndian, []byte("/xxxx"))
+
+	var testData bytes.Buffer
+	_ = binary.Write(&testData, binary.BigEndian, []byte("data"))
+
+	bf := messageRouter.Build(messageRouter.START, &path, &testData)
+	if bf == nil || fmt.Sprintf("%x", bf.Bytes()) != "06032f787878780064617461" {
+		t.Error()
+	}
+}
+
 func TestUnconnectedSendTimeout(t *testing.T) {
 	a, b := unconnectedSend.GenerateEncodedTimeout(10000)
 	if a != 8 || b != 39 {
@@ -130,24 +143,14 @@ func TestUnconnectedSendTimeout(t *testing.T) {
 }
 
 func TestUnconnectedSendBuild(t *testing.T) {
+	var path bytes.Buffer
+	_ = binary.Write(&path, binary.BigEndian, []byte("/xxxx"))
 
-}
+	var testData bytes.Buffer
+	_ = binary.Write(&testData, binary.BigEndian, []byte("data"))
 
-func TestMessageBuild(t *testing.T) {
-	//s1 := []byte("hello")
-	//buff := bytes.NewBuffer(s1)
-	//s2 := []byte(" world")
-	//buff.Write(s2)
-	//fmt.Println(buff.String()) //hello world
-	//
-	//fmt.Printf("%x", buff)
-	//s3 := make([]byte, 3)
-	//binary.Read(buff, binary.BigEndian, s3)
-	////buff.Read(s3)
-	//fmt.Printf("%x\n", s3)     //hel,s3的容量为3，只能读3个
-	//fmt.Println(buff.String()) //lo world
-	//
-	//binary.Read(buff, binary.BigEndian, s3) // 会把s3覆盖掉
-	//fmt.Printf("%x\n", s3)                  // lo
-	//fmt.Println(buff.String())              // world
+	bf := unconnectedSend.Build(&testData, &path, 1000)
+	if bf == nil || fmt.Sprintf("%x", bf.Bytes()) != "520220062401037d04006461746103002f78787878" {
+		t.Error()
+	}
 }

@@ -10,11 +10,11 @@ import (
 
 const UNCONNECTED_SEND_SERVICE = messageRouter.READ_TAG_FRAGMENTED
 
-var UNCONNECTED_SEND_PATH *bytes.Buffer
+var UNCONNECTED_SEND_PATH bytes.Buffer
 
 func init() {
-	_ = binary.Write(UNCONNECTED_SEND_PATH, binary.BigEndian, logical.Build(logical.ClassID, uint32(0x06), true))
-	_ = binary.Write(UNCONNECTED_SEND_PATH, binary.BigEndian, logical.Build(logical.InstanceID, uint32(1), true))
+	_ = binary.Write(&UNCONNECTED_SEND_PATH, binary.BigEndian, logical.Build(logical.ClassID, uint32(0x06), true).Bytes())
+	_ = binary.Write(&UNCONNECTED_SEND_PATH, binary.BigEndian, logical.Build(logical.InstanceID, uint32(1), true).Bytes())
 }
 
 func GenerateEncodedTimeout(timeout uint64) (uint8, uint8) {
@@ -51,9 +51,10 @@ func Build(messageRequest *bytes.Buffer, path *bytes.Buffer, timeout uint64) *by
 		_ = binary.Write(&buf, binary.BigEndian, uint8(0))
 	}
 
-	_ = binary.Write(&buf, binary.BigEndian, uint8(path.Len()))
+	pathLen := math.Ceil(float64(path.Len()) / 2)
+	_ = binary.Write(&buf, binary.BigEndian, uint8(pathLen))
 	_ = binary.Write(&buf, binary.BigEndian, uint8(0))
 	_ = binary.Write(&buf, binary.BigEndian, path.Bytes())
 
-	return messageRouter.Build(UNCONNECTED_SEND_SERVICE, UNCONNECTED_SEND_PATH, &buf)
+	return messageRouter.Build(UNCONNECTED_SEND_SERVICE, &UNCONNECTED_SEND_PATH, &buf)
 }
