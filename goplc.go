@@ -1,0 +1,4 @@
+package goplc
+
+func Test() {
+}

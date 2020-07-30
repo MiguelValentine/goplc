@@ -1,2 +1,2 @@
-module github.com/MiguelValentine/GoPlc
+module github.com/MiguelValentine/goplc
 go 1.14
