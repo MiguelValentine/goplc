@@ -21,6 +21,20 @@ const (
 	Cancel            Command = 0x73
 )
 
+type CPFItemID uint16
+
+const (
+	CPFItemID_Null                     CPFItemID = 0x00
+	CPFItemID_ListIdentity             CPFItemID = 0x0c
+	CPFItemID_ConnectionBased          CPFItemID = 0xa1
+	CPFItemID_ConnectedTransportPacket CPFItemID = 0xb1
+	CPFItemID_UCMM                     CPFItemID = 0xb2
+	CPFItemID_ListServices             CPFItemID = 0x100
+	CPFItemID_SockaddrO2T              CPFItemID = 0x8000
+	CPFItemID_SockaddrT2O              CPFItemID = 0x8001
+	CPFItemID_SequencedAddrItem        CPFItemID = 0x8002
+)
+
 func PaeseStatus(status uint8) string {
 	switch status {
 	case 0x00:
@@ -43,11 +57,11 @@ func PaeseStatus(status uint8) string {
 }
 
 type cpf struct {
-	ItemIDs map[string]uint16
+	ItemIDs map[string]CPFItemID
 }
 
 type cpfDataItem struct {
-	TypeID uint16
+	TypeID CPFItemID
 	data   *bytes.Buffer
 }
 
@@ -87,9 +101,8 @@ func (c *cpf) parse(buf *bytes.Buffer) []*cpfDataItem {
 	var result []*cpfDataItem
 
 	for i := uint16(0); i < itemCount; i++ {
-		TypeIDB := make([]byte, 2)
-		_ = binary.Read(buf, binary.BigEndian, TypeIDB)
-		TypeID := binary.LittleEndian.Uint16(TypeIDB)
+		var TypeID CPFItemID
+		_ = binary.Read(buf, binary.BigEndian, &TypeID)
 
 		lengthB := make([]byte, 2)
 		_ = binary.Read(buf, binary.BigEndian, lengthB)
@@ -107,21 +120,138 @@ func (c *cpf) parse(buf *bytes.Buffer) []*cpfDataItem {
 	return result
 }
 
-var CPF *cpf
-
 type header struct {
+	Command Command
+	Length  uint16
+	Session uint32
+	Status  uint32
+	Context uint64
+	Options uint32
+	Data    *bytes.Buffer
 }
 
-func init() {
-	CPF := &cpf{}
-	CPF.ItemIDs = make(map[string]uint16)
-	CPF.ItemIDs["Null"] = 0x00
-	CPF.ItemIDs["ListIdentity"] = 0x0c
-	CPF.ItemIDs["ConnectionBased"] = 0xa1
-	CPF.ItemIDs["ConnectedTransportPacket"] = 0xb1
-	CPF.ItemIDs["UCMM"] = 0xb2
-	CPF.ItemIDs["ListServices"] = 0x100
-	CPF.ItemIDs["SockaddrO2T"] = 0x8000
-	CPF.ItemIDs["SockaddrT2O"] = 0x8001
-	CPF.ItemIDs["SequencedAddrItem"] = 0x8002
+func (h *header) build() *bytes.Buffer {
+	var buf bytes.Buffer
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(h.Command))
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(h.Data.Len()))
+	_ = binary.Write(&buf, binary.LittleEndian, h.Session)
+	_ = binary.Write(&buf, binary.LittleEndian, h.Status)
+	_ = binary.Write(&buf, binary.LittleEndian, h.Context)
+	_ = binary.Write(&buf, binary.LittleEndian, h.Options)
+	_ = binary.Write(&buf, binary.LittleEndian, h.Data.Bytes())
+
+	return &buf
+}
+
+func (h *header) parse(buf *bytes.Buffer) {
+	_ = binary.Read(buf, binary.LittleEndian, &h.Command)
+	_ = binary.Read(buf, binary.LittleEndian, &h.Length)
+	_ = binary.Read(buf, binary.LittleEndian, &h.Session)
+	_ = binary.Read(buf, binary.LittleEndian, &h.Status)
+	_ = binary.Read(buf, binary.LittleEndian, &h.Context)
+	_ = binary.Read(buf, binary.LittleEndian, &h.Options)
+	_ = binary.Read(buf, binary.LittleEndian, h.Data)
+}
+
+func (h *header) registerSession() {
+	var buf bytes.Buffer
+
+	// Protocol Version (Required to be 1)
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(0x01))
+
+	// Opton Flags (Reserved for Future List)
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(0))
+
+	h.Command = RegisterSession
+	h.Data = &buf
+}
+
+func (h *header) unregisterSession(session uint32) {
+	h.Command = UnregisterSession
+	h.Session = session
+}
+
+func (h *header) sendRRData(timeout uint16, data *bytes.Buffer, session uint32) {
+	h.Command = SendRRData
+	h.Session = session
+
+	var _timeout bytes.Buffer
+
+	// Interface Handle ID (Shall be 0 for CIP)
+	_ = binary.Write(&_timeout, binary.LittleEndian, uint32(0))
+
+	// Timeout (sec)
+	_ = binary.Write(&_timeout, binary.LittleEndian, timeout)
+
+	var buf bytes.Buffer
+
+	cpfBuf := NewCPF().build([]*cpfDataItem{
+		&cpfDataItem{
+			TypeID: CPFItemID_Null,
+			data:   &bytes.Buffer{},
+		},
+		&cpfDataItem{
+			TypeID: CPFItemID_UCMM,
+			data:   data,
+		},
+	})
+
+	_ = binary.Write(&buf, binary.LittleEndian, _timeout)
+	_ = binary.Write(&buf, binary.LittleEndian, cpfBuf)
+
+	h.Data = &buf
+}
+
+func (h *header) sendUnitData(session uint32, connectID uint32, seqNumber uint32, data *bytes.Buffer) {
+	h.Session = session
+	h.Command = SendUnitData
+
+	var _timeout bytes.Buffer
+
+	// Interface Handle ID (Shall be 0 for CIP)
+	_ = binary.Write(&_timeout, binary.LittleEndian, uint32(0))
+
+	// Timeout (sec)
+	_ = binary.Write(&_timeout, binary.LittleEndian, uint16(0))
+
+	var _seqaddrBuf bytes.Buffer
+	_ = binary.Write(&_seqaddrBuf, binary.LittleEndian, connectID)
+	_ = binary.Write(&_seqaddrBuf, binary.LittleEndian, seqNumber)
+
+	cpfBuf := NewCPF().build([]*cpfDataItem{
+		&cpfDataItem{
+			TypeID: CPFItemID_SequencedAddrItem,
+			data:   &_seqaddrBuf,
+		},
+		&cpfDataItem{
+			TypeID: CPFItemID_ConnectedTransportPacket,
+			data:   data,
+		},
+	})
+
+	var buf bytes.Buffer
+	_ = binary.Write(&buf, binary.LittleEndian, _timeout)
+	_ = binary.Write(&buf, binary.LittleEndian, cpfBuf)
+
+	h.Data = &buf
+}
+
+func NewCPF() *cpf {
+	_cpf := &cpf{}
+	_cpf.ItemIDs = make(map[string]CPFItemID)
+	_cpf.ItemIDs["Null"] = CPFItemID_Null
+	_cpf.ItemIDs["ListIdentity"] = CPFItemID_ListIdentity
+	_cpf.ItemIDs["ConnectionBased"] = CPFItemID_ConnectionBased
+	_cpf.ItemIDs["ConnectedTransportPacket"] = CPFItemID_ConnectedTransportPacket
+	_cpf.ItemIDs["UCMM"] = CPFItemID_UCMM
+	_cpf.ItemIDs["ListServices"] = CPFItemID_ListServices
+	_cpf.ItemIDs["SockaddrO2T"] = CPFItemID_SockaddrO2T
+	_cpf.ItemIDs["SockaddrT2O"] = CPFItemID_SockaddrT2O
+	_cpf.ItemIDs["SequencedAddrItem"] = CPFItemID_SequencedAddrItem
+	return _cpf
+}
+
+func NewHeader() *header {
+	_header := &header{}
+	return _header
 }
