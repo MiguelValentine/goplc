@@ -10,7 +10,6 @@ import (
 	"github.com/MiguelValentine/goplc/enip/cip/epath/segments/port"
 	"github.com/MiguelValentine/goplc/enip/cip/messageRouter"
 	"github.com/MiguelValentine/goplc/enip/cip/unconnectedSend"
-	"log"
 	"testing"
 )
 
@@ -154,13 +153,4 @@ func TestUnconnectedSendBuild(t *testing.T) {
 	if bf == nil || fmt.Sprintf("%x", bf.Bytes()) != "520220062401037d04006461746103002f78787878" {
 		t.Error()
 	}
-}
-
-func TestX(t *testing.T) {
-	var datax bytes.Buffer
-	binary.Write(&datax, binary.BigEndian, uint16(0x1234))
-	num := make([]byte, 2)
-	binary.Read(&datax, binary.BigEndian, num)
-
-	log.Println(binary.LittleEndian.Uint16(num))
 }
