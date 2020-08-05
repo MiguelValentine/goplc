@@ -1,13 +1,3 @@
 package goplc
 
-//
-//type Config struct {
-//	EipPort int64
-//}
-//
-//func (c *Config) Default() *Config {
-//	config := Config{}
-//	config.EipPort = 44818
-//
-//	return &config
-//}
+const ENIP_PORT = 0xAF12
