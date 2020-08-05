@@ -71,7 +71,7 @@ func (r *Request) ListServices(context uint64) *encapsulation {
 type SendRRDataData struct {
 	InterfaceHandle    XUDINT
 	Timeout            XUINT
-	EncapsulatedPacket *bytes.Buffer
+	EncapsulatedPacket *commonPacketFormat
 }
 
 func (x *SendRRDataData) Buffer() *bytes.Buffer {
@@ -80,13 +80,13 @@ func (x *SendRRDataData) Buffer() *bytes.Buffer {
 	writeBinary(&_data, x.Timeout)
 
 	if x.EncapsulatedPacket != nil {
-		writeBinary(&_data, x.EncapsulatedPacket.Bytes())
+		writeBinary(&_data, x.EncapsulatedPacket.Buffer().Bytes())
 	}
 
 	return &_data
 }
 
-func (r *Request) SendRRData(session XUDINT, context uint64, timeout XUINT, cpf *bytes.Buffer) *encapsulation {
+func (r *Request) SendRRData(session XUDINT, context uint64, timeout XUINT, cpf *commonPacketFormat) *encapsulation {
 	_encapsulation := &encapsulation{}
 	_encapsulation.command = CommandSendRRData
 
@@ -108,7 +108,7 @@ func (r *Request) SendRRData(session XUDINT, context uint64, timeout XUINT, cpf 
 type SendUnitData struct {
 	InterfaceHandle    XUDINT
 	Timeout            XUINT
-	EncapsulatedPacket *bytes.Buffer
+	EncapsulatedPacket *commonPacketFormat
 }
 
 func (x *SendUnitData) Buffer() *bytes.Buffer {
@@ -117,13 +117,13 @@ func (x *SendUnitData) Buffer() *bytes.Buffer {
 	writeBinary(&_data, x.Timeout)
 
 	if x.EncapsulatedPacket != nil {
-		writeBinary(&_data, x.EncapsulatedPacket.Bytes())
+		writeBinary(&_data, x.EncapsulatedPacket.Buffer().Bytes())
 	}
 
 	return &_data
 }
 
-func (r *Request) SendUnitData(session XUDINT, context uint64, timeout XUINT, cpf *bytes.Buffer) *encapsulation {
+func (r *Request) SendUnitData(session XUDINT, context uint64, timeout XUINT, cpf *commonPacketFormat) *encapsulation {
 	_encapsulation := &encapsulation{}
 	_encapsulation.command = CommandSendUnitData
 
