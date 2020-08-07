@@ -1,4 +1,4 @@
-package enip
+package old
 
 type messageRouterRequest struct {
 	service         XUSINT

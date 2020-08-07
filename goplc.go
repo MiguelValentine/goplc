@@ -3,6 +3,7 @@ package goplc
 import (
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"time"
 )
@@ -11,6 +12,8 @@ type plc struct {
 	tcpAddr *net.TCPAddr
 	tcpConn *net.TCPConn
 	config  *Config
+	sender  chan []byte
+	context uint64
 }
 
 func (p *plc) Connect() error {
@@ -35,6 +38,7 @@ func (p *plc) Connected() {
 	}
 
 	p.config.Println("PLC Connected!")
+	p.config.EBF.Clean()
 
 	go p.read()
 }
@@ -45,10 +49,10 @@ func (p *plc) Disconnected(err error) {
 	}
 
 	if err != io.EOF {
-		p.config.Println("PLC Disconnected!Reconnecting...")
+		p.config.Println("PLC Disconnected!")
 		p.config.Println("EOF")
 	} else {
-		p.config.Println("PLC Disconnected!Reconnecting...")
+		p.config.Println("PLC Disconnected!")
 		p.config.Println(err)
 	}
 
@@ -56,12 +60,14 @@ func (p *plc) Disconnected(err error) {
 	p.tcpConn = nil
 
 	if p.config.ReconnectionInterval != 0 {
+		p.config.Println("Reconnecting...")
 		time.Sleep(p.config.ReconnectionInterval)
 		err := p.Connect()
 		if err != nil {
 			panic(err)
 		}
 	}
+
 }
 
 func (p *plc) read() {
@@ -73,12 +79,16 @@ func (p *plc) read() {
 			break
 		}
 
-		p.loadData(buf[0:length])
-	}
-}
+		encapsulations, err := p.config.EBF.Read(buf[0:length])
+		if err != nil {
+			p.Disconnected(err)
+			break
+		}
 
-func (p *plc) loadData(data []byte) {
-	log.Println(string(data))
+		if encapsulations != nil {
+			log.Printf("%+v\n", encapsulations[0])
+		}
+	}
 }
 
 func New(addr string, cfg *Config) (*plc, error) {
@@ -95,5 +105,9 @@ func New(addr string, cfg *Config) (*plc, error) {
 		_plc.config = defaultConfig
 	}
 
+	rand.Seed(time.Now().Unix())
+	_plc.context = rand.Uint64()
+
+	_plc.sender = make(chan []byte)
 	return _plc, nil
 }

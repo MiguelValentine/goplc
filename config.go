@@ -2,6 +2,7 @@ package goplc
 
 import (
 	"fmt"
+	"github.com/MiguelValentine/goplc/enip"
 	"log"
 	"time"
 )
@@ -10,6 +11,7 @@ type Config struct {
 	ENIP_PORT            uint16
 	Log                  *log.Logger
 	ReconnectionInterval time.Duration
+	EBF                  *enip.EBF
 
 	OnConnected    func()
 	OnDisconnected func(err error)
@@ -32,6 +34,7 @@ func DefaultConfig() *Config {
 	_defaultConfig.ENIP_PORT = 0xAF12
 	_defaultConfig.Log = nil
 	_defaultConfig.ReconnectionInterval = time.Second * 1
+	_defaultConfig.EBF = &enip.EBF{}
 
 	return _defaultConfig
 }
