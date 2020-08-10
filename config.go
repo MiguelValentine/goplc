@@ -1,7 +1,6 @@
 package goplc
 
 import (
-	"fmt"
 	"github.com/MiguelValentine/goplc/enip"
 	"log"
 	"time"
@@ -15,6 +14,7 @@ type Config struct {
 
 	OnConnected    func()
 	OnDisconnected func(err error)
+	OnRegistered   func()
 }
 
 func (c *Config) Println(v ...interface{}) {
@@ -41,5 +41,4 @@ func DefaultConfig() *Config {
 
 func init() {
 	defaultConfig = DefaultConfig()
-	fmt.Println(defaultConfig)
 }

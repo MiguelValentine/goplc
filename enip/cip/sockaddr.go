@@ -8,8 +8,6 @@ import (
 
 // big endian
 type SocketAddress struct {
-	TypeID    etype.XUINT
-	Length    etype.XUINT
 	SinFamily etype.XUINT
 	SinPort   etype.XUINT
 	SinAddr   etype.XUDINT
@@ -18,8 +16,6 @@ type SocketAddress struct {
 
 func (s *SocketAddress) Buffer() []byte {
 	buffer := new(bytes.Buffer)
-	_ = binary.Write(buffer, binary.LittleEndian, s.TypeID)
-	_ = binary.Write(buffer, binary.LittleEndian, s.Length)
 	_ = binary.Write(buffer, binary.BigEndian, s.SinFamily)
 	_ = binary.Write(buffer, binary.BigEndian, s.SinPort)
 	_ = binary.Write(buffer, binary.BigEndian, s.SinAddr)

@@ -11,7 +11,7 @@ import (
 func TestEncapsulation(t *testing.T) {
 	go tcpServer()
 
-	a, b := New("127.0.0.1:10809", nil)
+	a, b := NewOriginator("10.211.55.7", nil)
 	err := a.Connect()
 	log.Println(a, b, err)
 	time.Sleep(time.Second * 5)

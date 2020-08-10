@@ -14,6 +14,7 @@ type RegisterSessionData struct {
 func (r *Request) RegisterSession(context uint64) []byte {
 	pkg := &Encapsulation{}
 	pkg.Command = CommandRegisterSession
+	pkg.Length = 4
 	pkg.SenderContext = context
 
 	data := &RegisterSessionData{}
@@ -31,6 +32,7 @@ func (r *Request) RegisterSession(context uint64) []byte {
 func (r *Response) RegisterSession(context uint64, session etype.XUDINT) []byte {
 	pkg := &Encapsulation{}
 	pkg.Command = CommandRegisterSession
+	pkg.Length = 4
 	pkg.SenderContext = context
 	pkg.SessionHandle = session
 
