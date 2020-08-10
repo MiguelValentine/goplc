@@ -28,22 +28,3 @@ func (r *Request) RegisterSession(context uint64) []byte {
 
 	return pkg.Buffer()
 }
-
-func (r *Response) RegisterSession(context uint64, session etype.XUDINT) []byte {
-	pkg := &Encapsulation{}
-	pkg.Command = CommandRegisterSession
-	pkg.Length = 4
-	pkg.SenderContext = context
-	pkg.SessionHandle = session
-
-	data := &RegisterSessionData{}
-	data.ProtocolVersion = 1
-	data.OptionsFlags = 0
-
-	buffer := new(bytes.Buffer)
-	lib.WriteByte(buffer, data)
-
-	pkg.Data = buffer.Bytes()
-
-	return pkg.Buffer()
-}

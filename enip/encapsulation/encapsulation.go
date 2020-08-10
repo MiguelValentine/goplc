@@ -59,7 +59,6 @@ type EncapsulationHeader struct {
 }
 
 type Request struct{}
-type Response struct{}
 
 type Encapsulation struct {
 	EncapsulationHeader
