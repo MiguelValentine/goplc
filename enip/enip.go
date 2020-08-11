@@ -12,9 +12,9 @@ func (e *EBF) Clean() {
 	e.bufferData = []byte{}
 }
 
-func (e *EBF) Read(data []byte) ([]*encapsulation.Encapsulation, error) {
+func (e *EBF) Read(data []byte, handle func(*encapsulation.Encapsulation)) error {
 	e.bufferData = append(e.bufferData, data...)
-	encapsulations, read, err := encapsulation.Parse(e.bufferData)
+	read, err := encapsulation.Parse(e.bufferData, handle)
 	e.bufferData = e.bufferData[read:]
-	return encapsulations, err
+	return err
 }

@@ -2,19 +2,24 @@ package cip
 
 import "github.com/MiguelValentine/goplc/enip/etype"
 
-type ItemHeader struct {
-	TypeID etype.XUINT
-	Length etype.XUINT
+type Header struct {
+	interfaceHandle etype.XUDINT
+	timeout         etype.XUINT
 }
 
-type Item struct {
-	ItemHeader
-	Data []byte
+type CPFItem struct {
+	typeID etype.XUINT
+	length etype.XUINT
+	data   []byte
 }
 
 type CPF struct {
-	ItemCount   etype.XUINT
-	AddressItem Item
-	DataItem    Item
-	Optional    []byte
+	itemCount etype.XUINT
+	items     []CPFItem
+	optional  []byte
+}
+
+type Body struct {
+	Header
+	CPF
 }

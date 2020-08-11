@@ -1,6 +1,7 @@
 package goplc
 
 import (
+	"errors"
 	"fmt"
 	"github.com/MiguelValentine/goplc/enip/encapsulation"
 	"github.com/MiguelValentine/goplc/enip/etype"
@@ -18,6 +19,7 @@ type plc struct {
 	sender  chan []byte
 	context uint64
 	session etype.XUDINT
+	slot    uint8
 }
 
 func (p *plc) Connect() error {
@@ -101,24 +103,31 @@ func (p *plc) read() {
 			break
 		}
 
-		encapsulations, err := p.config.EBF.Read(buf[0:length])
+		err = p.config.EBF.Read(buf[0:length], p.encapsulationHandle)
 		if err != nil {
 			p.disconnected(err)
 			break
 		}
-
-		for _, _encapsulation := range encapsulations {
-			switch _encapsulation.Command {
-			case encapsulation.CommandRegisterSession:
-				p.session = _encapsulation.SessionHandle
-				p.config.OnRegistered()
-			}
-		}
 	}
 }
 
-func NewOriginator(addr string, cfg *Config) (*plc, error) {
+func (p *plc) encapsulationHandle(_encapsulation *encapsulation.Encapsulation) {
+	switch _encapsulation.Command {
+	case encapsulation.CommandRegisterSession:
+		p.session = _encapsulation.SessionHandle
+		if p.config.OnRegistered != nil {
+			p.config.OnRegistered()
+		}
+	case encapsulation.CommandUnRegisterSession:
+		p.disconnected(errors.New("UnRegisterSession"))
+	case encapsulation.CommandSendRRData:
+	case encapsulation.CommandSendUnitData:
+	}
+}
+
+func NewOriginator(addr string, slot uint8, cfg *Config) (*plc, error) {
 	_plc := &plc{}
+	_plc.slot = slot
 	_plc.config = cfg
 	if _plc.config == nil {
 		_plc.config = defaultConfig
