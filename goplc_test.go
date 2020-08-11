@@ -1,6 +1,7 @@
 package goplc
 
 import (
+	"github.com/MiguelValentine/goplc/enip/cip/epath/segment"
 	"log"
 	"testing"
 	"time"
@@ -8,6 +9,8 @@ import (
 
 func TestEncapsulation(t *testing.T) {
 	//go tcpServer()
+	r := segment.PortBuild(1, []byte{0x01})
+	log.Printf("%#x\n", r)
 
 	a, b := NewOriginator("10.211.55.7", 1, nil)
 	err := a.Connect()

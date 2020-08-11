@@ -3,6 +3,7 @@ package goplc
 import (
 	"errors"
 	"fmt"
+	"github.com/MiguelValentine/goplc/enip/cip/epath/segment"
 	"github.com/MiguelValentine/goplc/enip/encapsulation"
 	"github.com/MiguelValentine/goplc/enip/etype"
 	"io"
@@ -20,6 +21,8 @@ type plc struct {
 	context uint64
 	session etype.XUDINT
 	slot    uint8
+	request *encapsulation.Request
+	path    []byte
 }
 
 func (p *plc) Connect() error {
@@ -54,8 +57,12 @@ func (p *plc) connected() {
 }
 
 func (p *plc) registerSession() {
-	r := encapsulation.Request{}
-	p.sender <- r.RegisterSession(p.context)
+	p.sender <- p.request.RegisterSession(p.context)
+}
+
+func (p *plc) readControllerProps() {
+
+	p.sender <- p.request.SendRRData(p.context, 10, nil)
 }
 
 func (p *plc) disconnected(err error) {
@@ -139,6 +146,8 @@ func NewOriginator(addr string, slot uint8, cfg *Config) (*plc, error) {
 	}
 
 	_plc.tcpAddr = _tcp
+	_plc.request = &encapsulation.Request{}
+	_plc.path = segment.PortBuild(1, []byte{0x01})
 
 	rand.Seed(time.Now().Unix())
 	_plc.context = rand.Uint64()
