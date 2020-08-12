@@ -1,6 +1,10 @@
 package messageRouter
 
-import "github.com/MiguelValentine/goplc/enip/etype"
+import (
+	"bytes"
+	"github.com/MiguelValentine/goplc/enip/etype"
+	"github.com/MiguelValentine/goplc/enip/lib"
+)
 
 type Service etype.XUSINT
 
@@ -33,9 +37,60 @@ const (
 	FragmentedReadModifyWriteTag Service = 0x4e
 )
 
-type Request struct {
-	service         Service
-	requestPathSize etype.XUSINT
-	requestPath     []byte
-	requestData     []byte
+type request struct {
+	Service         Service
+	RequestPathSize etype.XUSINT
+	RequestPath     []byte
+	RequestData     []byte
+}
+
+type response struct {
+	Service                Service
+	Reserved               uint8
+	GeneralStatus          etype.XUSINT
+	SizeOfAdditionalStatus etype.XUSINT
+	AdditionalStatus       []byte
+	ResponseData           []byte
+}
+
+func (r *request) Buffer() []byte {
+	buffer := new(bytes.Buffer)
+	lib.WriteByte(buffer, r.Service)
+	lib.WriteByte(buffer, r.RequestPathSize)
+	lib.WriteByte(buffer, r.RequestPath)
+	lib.WriteByte(buffer, r.RequestData)
+
+	return buffer.Bytes()
+}
+
+func Build(service Service, paths [][]byte, data []byte) []byte {
+	buffer := new(bytes.Buffer)
+	for _, path := range paths {
+		lib.WriteByte(buffer, path)
+	}
+
+	_path := buffer.Bytes()
+
+	_request := &request{}
+	_request.Service = service
+	_request.RequestPathSize = etype.XUSINT(len(_path) / 2)
+	_request.RequestPath = _path
+	_request.RequestData = data
+
+	return _request.Buffer()
+}
+
+func Parse(buf []byte) *response {
+	r := &response{}
+	reader := bytes.NewReader(buf)
+	lib.ReadByte(reader, &r.Service)
+	lib.ReadByte(reader, &r.Reserved)
+	lib.ReadByte(reader, &r.GeneralStatus)
+	lib.ReadByte(reader, &r.SizeOfAdditionalStatus)
+	r.AdditionalStatus = make([]byte, r.SizeOfAdditionalStatus*2)
+	lib.ReadByte(reader, r.AdditionalStatus)
+	r.ResponseData = make([]byte, reader.Len())
+	lib.ReadByte(reader, r.ResponseData)
+
+	return r
 }

@@ -105,14 +105,12 @@ func Parse(data []byte, handle func(*Encapsulation)) (uint64, error) {
 			break
 		} else {
 			if _encapsulation.Length > 0 {
-				_data := make([]byte, _encapsulation.Length)
-				_, err := dataReader.Read(data)
+				_encapsulation.Data = make([]byte, _encapsulation.Length)
+				_, err := dataReader.Read(_encapsulation.Data)
 				if err != nil {
 					panic(err)
 					return 0, err
 				}
-
-				_encapsulation.Data = _data
 			}
 			handle(_encapsulation)
 		}

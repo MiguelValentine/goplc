@@ -26,51 +26,51 @@ type Header struct {
 }
 
 type CPFItem struct {
-	typeID Type
-	length etype.XUINT
-	data   []byte
+	TypeID Type
+	Length etype.XUINT
+	Data   []byte
 }
 
 func (i *CPFItem) Buffer() []byte {
 	buffer := new(bytes.Buffer)
-	lib.WriteByte(buffer, i.typeID)
-	lib.WriteByte(buffer, i.length)
-	lib.WriteByte(buffer, i.data)
+	lib.WriteByte(buffer, i.TypeID)
+	lib.WriteByte(buffer, i.Length)
+	lib.WriteByte(buffer, i.Data)
 	return buffer.Bytes()
 }
 
 func NewCPFItem(t Type, data []byte) *CPFItem {
 	_cpfItem := &CPFItem{}
-	_cpfItem.typeID = t
-	_cpfItem.length = etype.XUINT(len(data))
-	_cpfItem.data = data
+	_cpfItem.TypeID = t
+	_cpfItem.Length = etype.XUINT(len(data))
+	_cpfItem.Data = data
 
 	return _cpfItem
 }
 
 type CPF struct {
-	itemCount etype.XUINT
-	items     []*CPFItem
-	optional  []byte
+	ItemCount etype.XUINT
+	Items     []*CPFItem
+	Optional  []byte
 }
 
 func (c *CPF) Buffer() []byte {
 	buffer := new(bytes.Buffer)
-	lib.WriteByte(buffer, c.itemCount)
+	lib.WriteByte(buffer, c.ItemCount)
 
-	for _, item := range c.items {
+	for _, item := range c.Items {
 		lib.WriteByte(buffer, item.Buffer())
 	}
 
-	lib.WriteByte(buffer, c.optional)
+	lib.WriteByte(buffer, c.Optional)
 	return buffer.Bytes()
 }
 
 func NewCPF(items []*CPFItem, opt []byte) *CPF {
 	_cpf := &CPF{}
-	_cpf.itemCount = etype.XUINT(len(items))
-	_cpf.items = items
-	_cpf.optional = opt
+	_cpf.ItemCount = etype.XUINT(len(items))
+	_cpf.Items = items
+	_cpf.Optional = opt
 
 	return _cpf
 }
@@ -85,4 +85,30 @@ func Build(timeout etype.XUINT, cpf *CPF) []byte {
 	lib.WriteByte(buffer, cpf.Buffer())
 
 	return buffer.Bytes()
+}
+
+func Parser(buf []byte) (*Header, *CPF) {
+	reader := bytes.NewReader(buf)
+
+	header := &Header{}
+	cpf := &CPF{}
+	lib.ReadByte(reader, &header.interfaceHandle)
+	lib.ReadByte(reader, &header.timeout)
+	lib.ReadByte(reader, &cpf.ItemCount)
+
+	cpf.Items = make([]*CPFItem, cpf.ItemCount)
+	for i := 0; i < int(cpf.ItemCount); i++ {
+		cpf.Items[i] = &CPFItem{}
+		lib.ReadByte(reader, &cpf.Items[i].TypeID)
+		lib.ReadByte(reader, &cpf.Items[i].Length)
+		cpf.Items[i].Data = make([]byte, cpf.Items[i].Length)
+		lib.ReadByte(reader, cpf.Items[i].Data)
+	}
+
+	if reader.Len() > 0 {
+		cpf.Optional = make([]byte, reader.Len())
+		lib.ReadByte(reader, cpf.Optional)
+	}
+
+	return header, cpf
 }

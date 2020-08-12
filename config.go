@@ -15,6 +15,7 @@ type Config struct {
 	OnConnected    func()
 	OnDisconnected func(err error)
 	OnRegistered   func()
+	OnAttribute    func()
 }
 
 func (c *Config) Println(v ...interface{}) {
@@ -24,7 +25,9 @@ func (c *Config) Println(v ...interface{}) {
 }
 
 func (c *Config) Printf(fmt string, v ...interface{}) {
-	c.Log.Printf(fmt, v...)
+	if c.Log != nil {
+		c.Log.Printf(fmt, v...)
+	}
 }
 
 var defaultConfig *Config
