@@ -36,7 +36,7 @@ func DefaultConfig() *Config {
 	_defaultConfig := &Config{}
 	_defaultConfig.ENIP_PORT = 0xAF12
 	_defaultConfig.Log = nil
-	_defaultConfig.ReconnectionInterval = time.Second * 1
+	_defaultConfig.ReconnectionInterval = time.Second * 3
 	_defaultConfig.EBF = &enip.EBF{}
 
 	return _defaultConfig

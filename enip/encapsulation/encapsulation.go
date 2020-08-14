@@ -72,10 +72,12 @@ func (e *Encapsulation) Buffer() []byte {
 	return buffer.Bytes()
 }
 
-func Parse(data []byte, handle func(*Encapsulation)) (uint64, error) {
+func Parse(data []byte) (uint64, error, []*Encapsulation) {
 	if len(data) < 24 {
-		return 0, nil
+		return 0, nil, nil
 	}
+
+	var result []*Encapsulation
 
 	dataReader := bytes.NewReader(data)
 	count := dataReader.Len()
@@ -88,16 +90,16 @@ func Parse(data []byte, handle func(*Encapsulation)) (uint64, error) {
 		if _encapsulation.Status != 0 {
 			v, ok := StatusMap[_encapsulation.Status]
 			if ok {
-				return 0, errors.New(v)
+				return 0, errors.New(v), nil
 			} else {
-				return 0, errors.New(fmt.Sprintf("%s,%#x\n", "Encapsulation parser got unknow status", _encapsulation.Status))
+				return 0, errors.New(fmt.Sprintf("%s,%#x\n", "Encapsulation parser got unknow status", _encapsulation.Status)), nil
 			}
 		}
 
 		_, ok := CommandMap[etype.XUINT(_encapsulation.Command)]
 		if !ok {
 			_err := errors.New(fmt.Sprintf("%s,%#x\n", "Encapsulation parser got unknow command", _encapsulation.Command))
-			return 0, _err
+			return 0, _err, nil
 		}
 
 		if int(_encapsulation.Length) > dataReader.Len() {
@@ -109,13 +111,13 @@ func Parse(data []byte, handle func(*Encapsulation)) (uint64, error) {
 				_, err := dataReader.Read(_encapsulation.Data)
 				if err != nil {
 					panic(err)
-					return 0, err
+					return 0, err, nil
 				}
 			}
-			handle(_encapsulation)
+			result = append(result, _encapsulation)
 		}
 	}
 
 	count = count - dataReader.Len()
-	return uint64(count), nil
+	return uint64(count), nil, result
 }

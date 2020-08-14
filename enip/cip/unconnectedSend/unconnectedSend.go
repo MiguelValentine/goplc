@@ -74,5 +74,5 @@ func Build(data []byte, path []byte, timeout uint64) []byte {
 	lib.WriteByte(buffer, uint8(0))
 	lib.WriteByte(buffer, path)
 
-	return messageRouter.Build(messageRouter.ServiceReadTagFragmented, UCMMSendPath, buffer.Bytes())
+	return messageRouter.Build(messageRouter.ServiceUnconnectedSend, UCMMSendPath, buffer.Bytes())
 }

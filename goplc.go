@@ -11,6 +11,7 @@ import (
 	"github.com/MiguelValentine/goplc/enip/encapsulation"
 	"github.com/MiguelValentine/goplc/enip/etype"
 	"github.com/MiguelValentine/goplc/enip/lib"
+	"github.com/MiguelValentine/goplc/tag"
 	"io"
 	"math/rand"
 	"net"
@@ -30,16 +31,17 @@ type controller struct {
 }
 
 type plc struct {
-	tcpAddr    *net.TCPAddr
-	tcpConn    *net.TCPConn
-	config     *Config
-	sender     chan []byte
-	context    uint64
-	session    etype.XUDINT
-	slot       uint8
-	request    *encapsulation.Request
-	path       []byte
-	Controller *controller
+	tcpAddr     *net.TCPAddr
+	tcpConn     *net.TCPConn
+	config      *Config
+	sender      chan []byte
+	context     uint64
+	session     etype.XUDINT
+	slot        uint8
+	request     *encapsulation.Request
+	path        []byte
+	Controller  *controller
+	writeHandle bool
 }
 
 func (p *plc) Connect() error {
@@ -67,8 +69,11 @@ func (p *plc) connected() {
 	p.config.Println("PLC Connected!")
 	p.config.EBF.Clean()
 
+	if !p.writeHandle {
+		go p.write()
+	}
+
 	go p.read()
-	go p.write()
 
 	p.registerSession()
 }
@@ -87,12 +92,17 @@ func (p *plc) readControllerProps() {
 	p.sender <- p.request.SendRRData(p.context, p.session, 10, ucmm)
 }
 
+func (p *plc) ReadTag(tag *tag.Tag) {
+	ucmm := unconnectedSend.Build(tag.GenerateReadMessageRequest(), p.path, 2000)
+	p.sender <- p.request.SendRRData(p.context, p.session, 10, ucmm)
+}
+
 func (p *plc) disconnected(err error) {
 	if p.config.OnDisconnected != nil {
 		p.config.OnDisconnected(err)
 	}
 
-	if err != io.EOF {
+	if err == io.EOF {
 		p.config.Println("PLC Disconnected!")
 		p.config.Println("EOF")
 	} else {
@@ -114,6 +124,7 @@ func (p *plc) disconnected(err error) {
 }
 
 func (p *plc) write() {
+	p.writeHandle = true
 	for {
 		select {
 		case data := <-p.sender:
@@ -124,22 +135,24 @@ func (p *plc) write() {
 
 func (p *plc) read() {
 	buf := make([]byte, 1024*64)
+	var err error
 	for {
-		length, err := p.tcpConn.Read(buf)
+		var length int
+		length, err = p.tcpConn.Read(buf)
 		if err != nil {
-			p.disconnected(err)
 			break
 		}
 
 		err = p.config.EBF.Read(buf[0:length], p.encapsulationHandle)
 		if err != nil {
-			p.disconnected(err)
 			break
 		}
 	}
+
+	go p.disconnected(err)
 }
 
-func (p *plc) encapsulationHandle(_encapsulation *encapsulation.Encapsulation) {
+func (p *plc) encapsulationHandle(_encapsulation *encapsulation.Encapsulation) error {
 	switch _encapsulation.Command {
 	case encapsulation.CommandRegisterSession:
 		p.session = _encapsulation.SessionHandle
@@ -149,26 +162,30 @@ func (p *plc) encapsulationHandle(_encapsulation *encapsulation.Encapsulation) {
 		}
 		p.readControllerProps()
 	case encapsulation.CommandUnRegisterSession:
-		p.disconnected(errors.New("UnRegisterSession"))
+		return errors.New("UnRegisterSession")
 	case encapsulation.CommandSendRRData:
 		p.config.Printf("SendRRData=> %d\n", _encapsulation.Length)
 		_, _cpf := cip.Parser(_encapsulation.Data)
-		p.sendRRDataHandle(_cpf)
+		return p.sendRRDataHandle(_cpf)
 	case encapsulation.CommandSendUnitData:
 	}
+
+	return nil
 }
 
-func (p *plc) sendRRDataHandle(cpf *cip.CPF) {
+func (p *plc) sendRRDataHandle(cpf *cip.CPF) error {
 	mr := messageRouter.Parse(cpf.Items[1].Data)
-
+	//p.config.Printf("%+v\n", mr.ResponseData)
 	if mr.GeneralStatus != 0 {
-		p.disconnected(errors.New(string(mr.AdditionalStatus)))
-		return
+		return errors.New(fmt.Sprintf("SendRRData Error %#x => %s\n", mr.GeneralStatus, string(mr.AdditionalStatus)))
 	}
 	switch mr.Service - 0x80 {
 	case messageRouter.ServiceGetAttributeAll:
 		p.getAttributeAllHandle(mr.ResponseData)
+	case messageRouter.ServiceReadTag:
+		//p.config.Printf("%+v\n", mr.ResponseData)
 	}
+	return nil
 }
 
 func (p *plc) getAttributeAllHandle(data []byte) {
@@ -215,6 +232,7 @@ func NewOriginator(addr string, slot uint8, cfg *Config) (*plc, error) {
 	_plc.context = rand.Uint64()
 	_plc.config.Printf("Random context: %d\n", _plc.context)
 	_plc.Controller = &controller{}
+	_plc.writeHandle = false
 
 	_plc.sender = make(chan []byte)
 	return _plc, nil
