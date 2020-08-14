@@ -13,6 +13,7 @@ import (
 	"github.com/MiguelValentine/goplc/enip/lib"
 	"github.com/MiguelValentine/goplc/tag"
 	"io"
+	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -42,6 +43,7 @@ type plc struct {
 	path        []byte
 	Controller  *controller
 	writeHandle bool
+	tagsContext map[uint64]*tag.Tag
 }
 
 func (p *plc) Connect() error {
@@ -93,8 +95,9 @@ func (p *plc) readControllerProps() {
 }
 
 func (p *plc) ReadTag(tag *tag.Tag) {
+	p.tagsContext[tag.Context] = tag
 	ucmm := unconnectedSend.Build(tag.GenerateReadMessageRequest(), p.path, 2000)
-	p.sender <- p.request.SendRRData(p.context, p.session, 10, ucmm)
+	p.sender <- p.request.SendRRData(tag.Context, p.session, 10, ucmm)
 }
 
 func (p *plc) disconnected(err error) {
@@ -166,16 +169,15 @@ func (p *plc) encapsulationHandle(_encapsulation *encapsulation.Encapsulation) e
 	case encapsulation.CommandSendRRData:
 		p.config.Printf("SendRRData=> %d\n", _encapsulation.Length)
 		_, _cpf := cip.Parser(_encapsulation.Data)
-		return p.sendRRDataHandle(_cpf)
+		return p.sendRRDataHandle(_encapsulation, _cpf)
 	case encapsulation.CommandSendUnitData:
 	}
 
 	return nil
 }
 
-func (p *plc) sendRRDataHandle(cpf *cip.CPF) error {
+func (p *plc) sendRRDataHandle(_encapsulation *encapsulation.Encapsulation, cpf *cip.CPF) error {
 	mr := messageRouter.Parse(cpf.Items[1].Data)
-	//p.config.Printf("%+v\n", mr.ResponseData)
 	if mr.GeneralStatus != 0 {
 		return errors.New(fmt.Sprintf("SendRRData Error %#x => %s\n", mr.GeneralStatus, string(mr.AdditionalStatus)))
 	}
@@ -183,7 +185,16 @@ func (p *plc) sendRRDataHandle(cpf *cip.CPF) error {
 	case messageRouter.ServiceGetAttributeAll:
 		p.getAttributeAllHandle(mr.ResponseData)
 	case messageRouter.ServiceReadTag:
-		//p.config.Printf("%+v\n", mr.ResponseData)
+		_tag := p.tagsContext[_encapsulation.SenderContext]
+		if _tag == nil {
+			return errors.New("TAG not found")
+		}
+		dataReader := bytes.NewReader(mr.ResponseData)
+		lib.ReadByte(dataReader, &_tag.XType)
+		_tag.Value = make([]byte, dataReader.Len())
+		lib.ReadByte(dataReader, _tag.Value)
+		v := _tag.GetValue()
+		log.Println(v)
 	}
 	return nil
 }
@@ -233,6 +244,7 @@ func NewOriginator(addr string, slot uint8, cfg *Config) (*plc, error) {
 	_plc.config.Printf("Random context: %d\n", _plc.context)
 	_plc.Controller = &controller{}
 	_plc.writeHandle = false
+	_plc.tagsContext = make(map[uint64]*tag.Tag)
 
 	_plc.sender = make(chan []byte)
 	return _plc, nil

@@ -1,6 +1,12 @@
 package dataTypes
 
+import (
+	"reflect"
+)
+
 type DataType uint16
+
+var CoverMap map[DataType]reflect.Kind
 
 const (
 	AUTO            DataType = 0x00
@@ -35,3 +41,19 @@ const (
 	STRINGI         DataType = 0xde
 	STRUCT          DataType = 0xa002
 )
+
+func init() {
+	CoverMap = make(map[DataType]reflect.Kind)
+	CoverMap[AUTO] = reflect.Invalid
+	CoverMap[BOOL] = reflect.Bool
+	CoverMap[SINT] = reflect.Int8
+	CoverMap[INT] = reflect.Int16
+	CoverMap[DINT] = reflect.Int32
+	CoverMap[LINT] = reflect.Int64
+	CoverMap[USINT] = reflect.Uint8
+	CoverMap[UINT] = reflect.Uint16
+	CoverMap[UDINT] = reflect.Uint32
+	CoverMap[REAL] = reflect.Float32
+	CoverMap[LREAL] = reflect.Float64
+	CoverMap[STRING] = reflect.String
+}

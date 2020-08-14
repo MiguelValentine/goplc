@@ -75,6 +75,7 @@ func Build(service Service, paths [][]byte, data []byte) []byte {
 
 	_request := &request{}
 	_request.Service = service
+
 	_request.RequestPathSize = etype.XUSINT(len(_path) / 2)
 	_request.RequestPath = _path
 	_request.RequestData = data
