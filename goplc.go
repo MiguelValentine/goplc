@@ -10,8 +10,10 @@ import (
 	"github.com/MiguelValentine/goplc/ethernetip/commonIndustrialProtocol/segment/epath"
 	_type "github.com/MiguelValentine/goplc/ethernetip/type"
 	"github.com/MiguelValentine/goplc/lib"
+	"github.com/MiguelValentine/goplc/tag"
 	"io"
 	"math"
+	"math/rand"
 	"net"
 	"time"
 )
@@ -150,39 +152,6 @@ func (p *plc) handleRegisterSession(encapsulation *ethernetip.Encapsulation) {
 	p.ContextPool[math.MaxUint64] = p.getAttributeAll
 }
 
-func (p *plc) UcmmSend(timeTicks _type.USINT, timeoutTicks _type.USINT, context _type.ULINT, mr1 *commonIndustrialProtocol.MessageRouterRequest) {
-	ucmm := &commonIndustrialProtocol.UnconnectedSend{}
-	ucmm.TimeTick = timeTicks
-	ucmm.TimeOutTicks = timeoutTicks
-	ucmm.MessageRequest = mr1
-	ucmm.RouterPath = p.TargetPath
-
-	mr2 := &commonIndustrialProtocol.MessageRouterRequest{}
-	mr2.Service = 0x52
-	mr2.RequestPath = segment.Paths(
-		epath.LogicalBuild(epath.LogicalTypeClassID, 06, true),
-		epath.LogicalBuild(epath.LogicalTypeInstanceID, 01, true),
-	)
-	mr2.RequestData = ucmm.Buffer()
-
-	cpf := &ethernetip.CommonPacketFormat{}
-	cpf.UnconnectedData(mr2.Buffer())
-	pkg := ethernetip.RequestSendRRData(p.session, context, 10, cpf)
-
-	p.sender <- pkg.Buffer()
-}
-
-func (p *plc) handleSendRRData(encapsulation *ethernetip.Encapsulation) {
-	cpf := ethernetip.SendRRDataParser(encapsulation.Data)
-	mr := commonIndustrialProtocol.MRParser(cpf.DataItem.Data)
-	if mr.GeneralStatus != 0 {
-		panic(errors.New(fmt.Sprintf("target error => Service Code: %#x | Status: %#x | Addtional: %s", mr.ReplyService, mr.GeneralStatus, mr.AdditionalStatus)))
-	} else {
-		p.ContextPool[encapsulation.SenderContext](mr)
-		delete(p.ContextPool, encapsulation.SenderContext)
-	}
-}
-
 func (p *plc) getAttributeAll(mr *commonIndustrialProtocol.MessageRouterResponse) {
 	p.config.Printf("%+v\n", mr)
 
@@ -207,6 +176,39 @@ func (p *plc) getAttributeAll(mr *commonIndustrialProtocol.MessageRouterResponse
 	}
 }
 
+func (p *plc) UcmmSend(timeTicks _type.USINT, timeoutTicks _type.USINT, context _type.ULINT, mr1 *commonIndustrialProtocol.MessageRouterRequest) {
+	ucmm := &commonIndustrialProtocol.UnconnectedSend{}
+	ucmm.TimeTick = timeTicks
+	ucmm.TimeOutTicks = timeoutTicks
+	ucmm.MessageRequest = mr1
+	ucmm.RouterPath = p.TargetPath
+
+	mr2 := &commonIndustrialProtocol.MessageRouterRequest{}
+	mr2.Service = 0x52
+	mr2.RequestPath = segment.Paths(
+		epath.LogicalBuild(epath.LogicalTypeClassID, 06, true),
+		epath.LogicalBuild(epath.LogicalTypeInstanceID, 01, true),
+	)
+	mr2.RequestData = ucmm.Buffer()
+
+	cpf := &ethernetip.CommonPacketFormat{}
+	cpf.UnconnectedData(mr2.Buffer())
+	pkg := ethernetip.RequestSendRRData(p.session, context, 10, cpf)
+
+	p.sender <- pkg.Buffer()
+}
+
+func (p *plc) handleSendData(encapsulation *ethernetip.Encapsulation) {
+	cpf := ethernetip.SendRRDataParser(encapsulation.Data)
+	mr := commonIndustrialProtocol.MRParser(cpf.DataItem.Data)
+	if mr.GeneralStatus != 0 {
+		panic(errors.New(fmt.Sprintf("target error => Service Code: %#x | Status: %#x | Addtional: %s", mr.ReplyService, mr.GeneralStatus, mr.AdditionalStatus)))
+	} else {
+		p.ContextPool[encapsulation.SenderContext](mr)
+		delete(p.ContextPool, encapsulation.SenderContext)
+	}
+}
+
 func (p *plc) write() {
 	p.writeRoute = true
 	for {
@@ -216,6 +218,13 @@ func (p *plc) write() {
 			_, _ = p.tcpConn.Write(data)
 		}
 	}
+}
+
+func (p *plc) ReadTag(tag *tag.Tag) {
+	rand.Seed(time.Now().UnixNano())
+	context := _type.ULINT(rand.Uint64())
+	p.ContextPool[context] = tag.Parser
+	p.UcmmSend(3, 250, context, tag.GenerateReadMessageRequest())
 }
 
 func NewOriginator(addr string, slot uint8, cfg *Config) (*plc, error) {
@@ -241,7 +250,8 @@ func NewOriginator(addr string, slot uint8, cfg *Config) (*plc, error) {
 	_plc.HandleMap[ethernetip.CommandListIdentity] = ethernetip.HandleListIdentity
 	_plc.HandleMap[ethernetip.CommandListInterfaces] = ethernetip.HandleListInterfaces
 	_plc.HandleMap[ethernetip.CommandRegisterSession] = _plc.handleRegisterSession
-	_plc.HandleMap[ethernetip.CommandSendRRData] = _plc.handleSendRRData
+	_plc.HandleMap[ethernetip.CommandSendRRData] = _plc.handleSendData
+	_plc.HandleMap[ethernetip.CommandSendUnitData] = _plc.handleSendData
 
 	return _plc, nil
 }

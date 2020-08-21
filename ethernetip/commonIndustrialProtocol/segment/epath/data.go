@@ -14,20 +14,15 @@ const (
 	DataTypeANSI   DataTypes = 0x11
 )
 
-func DataBuild(tp DataTypes, data []byte) []byte {
-	paddingTag := len(data)%2 == 1
-
+func DataBuild(tp DataTypes, data []byte, padded bool) []byte {
 	buffer := new(bytes.Buffer)
 
 	firstByte := uint8(segment.SegmentTypeData) | uint8(tp)
 	lib.WriteByte(buffer, firstByte)
-	length := uint8(len(data) / 2)
-	if paddingTag {
-		length = length + 1
-	}
+	length := uint8(len(data))
 	lib.WriteByte(buffer, length)
 	lib.WriteByte(buffer, data)
-	if paddingTag {
+	if padded && buffer.Len()%2 == 1 {
 		lib.WriteByte(buffer, uint8(0))
 	}
 
