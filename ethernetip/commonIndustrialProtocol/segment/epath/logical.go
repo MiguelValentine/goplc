@@ -1,11 +1,13 @@
-package segment
+package epath
 
 import (
 	"bytes"
-	"github.com/MiguelValentine/goplc/enip/lib"
+	"github.com/MiguelValentine/goplc/ethernetip/commonIndustrialProtocol/segment"
+	_type "github.com/MiguelValentine/goplc/ethernetip/type"
+	"github.com/MiguelValentine/goplc/lib"
 )
 
-type LogicalType uint8
+type LogicalType _type.USINT
 
 const (
 	LogicalTypeClassID     LogicalType = 0 << 2
@@ -17,7 +19,7 @@ const (
 	LogicalTypeServiceID   LogicalType = 6 << 2
 )
 
-func LogicalBuild(_type LogicalType, address uint32, padded bool) []byte {
+func LogicalBuild(tp LogicalType, address uint32, padded bool) []byte {
 	format := uint8(0)
 
 	if address <= 255 {
@@ -28,12 +30,11 @@ func LogicalBuild(_type LogicalType, address uint32, padded bool) []byte {
 		format = 2
 	}
 
-	id := uint8(TypeLogical) | uint8(_type) | format
-
 	buffer := new(bytes.Buffer)
-	lib.WriteByte(buffer, id)
+	firstByte := uint8(segment.SegmentTypeLogical) | uint8(tp) | format
+	lib.WriteByte(buffer, firstByte)
 
-	if address > 255 && padded {
+	if address > 255 && address <= 65535 && padded {
 		lib.WriteByte(buffer, uint8(0))
 	}
 

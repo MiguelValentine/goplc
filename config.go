@@ -1,45 +1,38 @@
 package goplc
 
 import (
-	"github.com/MiguelValentine/goplc/enip"
 	"log"
 	"time"
 )
 
 type Config struct {
-	ENIP_PORT            uint16
-	Log                  *log.Logger
+	Port                 uint16
 	ReconnectionInterval time.Duration
-	EBF                  *enip.EBF
-
-	OnConnected    func()
-	OnDisconnected func(err error)
-	OnRegistered   func()
-	OnAttribute    func()
-}
-
-func (c *Config) Println(v ...interface{}) {
-	if c.Log != nil {
-		c.Log.Println(v...)
-	}
-}
-
-func (c *Config) Printf(fmt string, v ...interface{}) {
-	if c.Log != nil {
-		c.Log.Printf(fmt, v...)
-	}
+	Logger               *log.Logger
+	OnConnected          func()
 }
 
 var defaultConfig *Config
 
 func DefaultConfig() *Config {
 	_defaultConfig := &Config{}
-	_defaultConfig.ENIP_PORT = 0xAF12
-	_defaultConfig.Log = nil
-	_defaultConfig.ReconnectionInterval = time.Second * 3
-	_defaultConfig.EBF = &enip.EBF{}
+	_defaultConfig.Port = 0xAF12
+	_defaultConfig.ReconnectionInterval = 0
+	_defaultConfig.Logger = nil
 
 	return _defaultConfig
+}
+
+func (c *Config) Println(v ...interface{}) {
+	if c.Logger != nil {
+		c.Logger.Println(v...)
+	}
+}
+
+func (c *Config) Printf(format string, v ...interface{}) {
+	if c.Logger != nil {
+		c.Logger.Printf(format, v...)
+	}
 }
 
 func init() {
