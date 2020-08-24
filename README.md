@@ -10,7 +10,7 @@ A golang based API(Originator) for interfacing with Rockwell Control/CompactLogi
 
 ## Thanks
 
-<a href="https://github.com/cmseaton42/node-ethernet-ip">node-ethernet-ip</a> project gave me a lot of inspiration。
+<a href="https://github.com/cmseaton42/node-ethernet-ip">node-ethernet-ip</a> project gave me a lot of inspiration.
 
 ## The API
 
