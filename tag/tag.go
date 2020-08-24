@@ -2,6 +2,7 @@ package tag
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/MiguelValentine/goplc/ethernetip/commonIndustrialProtocol"
 	"github.com/MiguelValentine/goplc/ethernetip/commonIndustrialProtocol/segment/epath"
 	"github.com/MiguelValentine/goplc/lib"
@@ -11,13 +12,14 @@ const ServiceReadTag = commonIndustrialProtocol.Service(0x4c)
 const ServiceWriteTag = commonIndustrialProtocol.Service(0x4d)
 
 type Tag struct {
-	name      []byte
-	readCount uint16
-	xtype     DataType
-	value     []byte
-	OnChange  func(interface{})
-	OnData    func(interface{})
-	next      func()
+	name       []byte
+	readCount  uint16
+	xtype      DataType
+	structType DataType
+	value      []byte
+	OnChange   func(interface{})
+	OnData     func(interface{})
+	next       func()
 }
 
 func (t *Tag) GenerateReadMessageRequest() *commonIndustrialProtocol.MessageRouterRequest {
@@ -42,7 +44,6 @@ func (t *Tag) GenerateWriteMessageRequest() *commonIndustrialProtocol.MessageRou
 	lib.WriteByte(data, t.readCount)
 	lib.WriteByte(data, t.GetValue())
 	mr.RequestData = data.Bytes()
-
 	return mr
 }
 
@@ -52,9 +53,11 @@ func (t *Tag) ReadTagParser(mr *commonIndustrialProtocol.MessageRouterResponse) 
 	newValue := make([]byte, dataReader.Len())
 	lib.ReadByte(dataReader, newValue)
 
-	if t.OnChange != nil && bytes.Compare(t.value, newValue) != 0 {
+	if bytes.Compare(t.value, newValue) != 0 {
 		t.value = newValue
-		t.OnChange(t.GetValue())
+		if t.OnChange != nil {
+			t.OnChange(t.GetValue())
+		}
 	}
 
 	if t.OnData != nil {
@@ -81,7 +84,11 @@ func (t *Tag) Then(f func()) {
 }
 
 func (t *Tag) Type() string {
-	return TypeMap[t.xtype]
+	if _, ok := TypeMap[t.xtype]; !ok {
+		return fmt.Sprintf("%#x", t.xtype)
+	} else {
+		return TypeMap[t.xtype]
+	}
 }
 
 func (t *Tag) Name() string {
@@ -126,8 +133,29 @@ func (t *Tag) GetValue() interface{} {
 		result := int64(0)
 		lib.ReadByte(reader, &result)
 		return result
+	case REAL:
+		result := float32(0)
+		lib.ReadByte(reader, &result)
+		return result
+	case LREAL:
+		result := float64(0)
+		lib.ReadByte(reader, &result)
+		return result
+	case STRUCT:
+		_tp1 := uint16(0)
+		lib.ReadByte(reader, &_tp1)
+		if _tp1 == 0xfce {
+			t.structType = STRINGAB
+			_len := uint32(0)
+			lib.ReadByte(reader, &_len)
+			buf := make([]byte, _len)
+			lib.ReadByte(reader, buf)
+			return string(buf)
+		} else {
+			return t.value
+		}
 	default:
-		return nil
+		return t.value
 	}
 }
 
@@ -147,6 +175,12 @@ func (t *Tag) SetValue(data interface{}) {
 		lib.WriteByte(writer, &result)
 	case LINT:
 		result := data.(int64)
+		lib.WriteByte(writer, &result)
+	case REAL:
+		result := data.(float32)
+		lib.WriteByte(writer, &result)
+	case LREAL:
+		result := data.(float64)
 		lib.WriteByte(writer, &result)
 	}
 

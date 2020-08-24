@@ -33,7 +33,8 @@ const (
 	EPATH           DataType = 0xdc
 	ENGUNIT         DataType = 0xdd
 	STRINGI         DataType = 0xde
-	STRUCT          DataType = 0xa002
+	STRUCT          DataType = 0x2a0
+	STRINGAB        DataType = 0xfce
 )
 
 var TypeMap map[DataType]string
@@ -71,4 +72,5 @@ func init() {
 	TypeMap[ENGUNIT] = "ENGUNIT"
 	TypeMap[STRINGI] = "STRINGI"
 	TypeMap[STRUCT] = "STRUCT"
+	TypeMap[STRINGAB] = "STRINGAB"
 }

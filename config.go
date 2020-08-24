@@ -9,7 +9,6 @@ type Config struct {
 	Port                 uint16
 	ReconnectionInterval time.Duration
 	Logger               *log.Logger
-	OnConnected          func()
 }
 
 var defaultConfig *Config

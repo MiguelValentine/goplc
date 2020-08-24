@@ -13,6 +13,7 @@ import (
 	"github.com/MiguelValentine/goplc/tag"
 	"github.com/MiguelValentine/goplc/tagGroup"
 	"io"
+	"log"
 	"math"
 	"math/rand"
 	"net"
@@ -38,11 +39,12 @@ type plc struct {
 	session    _type.UDINT
 	Controller *controller
 
-	writeRoute bool
-	sender     chan []byte
-	bufferData []byte
-	TargetPath []byte
-	HandleMap  map[ethernetip.Command]func(*ethernetip.Encapsulation)
+	writeRoute  bool
+	sender      chan []byte
+	bufferData  []byte
+	TargetPath  []byte
+	HandleMap   map[ethernetip.Command]func(*ethernetip.Encapsulation)
+	OnConnected func()
 
 	ContextPool map[_type.ULINT]func(*commonIndustrialProtocol.MessageRouterResponse)
 }
@@ -103,11 +105,11 @@ func (p *plc) disconnected(err error) {
 }
 
 func (p *plc) read() {
-	defer func() {
-		if err := recover(); err != nil {
-			go p.disconnected(err.(error))
-		}
-	}()
+	//defer func() {
+	//	if err := recover(); err != nil {
+	//		go p.disconnected(err.(error))
+	//	}
+	//}()
 
 	buf := make([]byte, 1024*64)
 	var err error
@@ -172,8 +174,8 @@ func (p *plc) getAttributeAll(mr *commonIndustrialProtocol.MessageRouterResponse
 	p.Controller.Name = string(nameBuf)
 	p.Controller.Version = fmt.Sprintf("%d.%d", p.Controller.Major, p.Controller.Minor)
 
-	if p.config.OnConnected != nil {
-		p.config.OnConnected()
+	if p.OnConnected != nil {
+		p.OnConnected()
 	}
 }
 
@@ -248,6 +250,71 @@ func (p *plc) ReadTagGroupInterval(tg *tagGroup.TagGroup, d time.Duration) {
 	lib.Cron(d, func() {
 		p.ReadTagGroup(tg)
 	})
+}
+
+const ServiceGetAttributeList = commonIndustrialProtocol.Service(0x03)
+
+func (p *plc) ListTemplate(instanceID uint32) {
+	mr := &commonIndustrialProtocol.MessageRouterRequest{}
+	mr.Service = ServiceGetAttributeList
+	mr.RequestPath = segment.Paths(
+		epath.LogicalBuild(epath.LogicalTypeClassID, 0x6C, true),
+		epath.LogicalBuild(epath.LogicalTypeInstanceID, instanceID&0x0fff, true),
+	)
+
+	data := new(bytes.Buffer)
+	lib.WriteByte(data, uint16(4))
+	lib.WriteByte(data, uint16(4))
+	lib.WriteByte(data, uint16(5))
+	lib.WriteByte(data, uint16(2))
+	lib.WriteByte(data, uint16(1))
+	mr.RequestData = data.Bytes()
+
+	rand.Seed(time.Now().UnixNano())
+	context := _type.ULINT(rand.Uint64())
+	p.ContextPool[context] = func(mr *commonIndustrialProtocol.MessageRouterResponse) {
+		log.Printf("% x\n", mr.ResponseData)
+	}
+	p.UcmmSend(3, 250, context, mr)
+}
+
+const ServiceGetInstanceAttributeList = commonIndustrialProtocol.Service(0x55)
+
+func (p *plc) ListAllTags(instanceID uint32) {
+	mr := &commonIndustrialProtocol.MessageRouterRequest{}
+	mr.Service = ServiceGetInstanceAttributeList
+	mr.RequestPath = segment.Paths(
+		epath.LogicalBuild(epath.LogicalTypeClassID, 0x6B, true),
+		epath.LogicalBuild(epath.LogicalTypeInstanceID, instanceID, true),
+	)
+
+	data := new(bytes.Buffer)
+	lib.WriteByte(data, uint16(2))
+	lib.WriteByte(data, uint16(1))
+	lib.WriteByte(data, uint16(2))
+	mr.RequestData = data.Bytes()
+
+	rand.Seed(time.Now().UnixNano())
+	context := _type.ULINT(rand.Uint64())
+	p.ContextPool[context] = func(mr *commonIndustrialProtocol.MessageRouterResponse) {
+		reader := bytes.NewReader(mr.ResponseData)
+		insId := uint32(0)
+		for reader.Len() > 0 {
+			namelen := uint16(0)
+			lib.ReadByte(reader, &insId)
+			lib.ReadByte(reader, &namelen)
+			name := make([]byte, namelen)
+			lib.ReadByte(reader, name)
+			_tp := uint16(0)
+			lib.ReadByte(reader, &_tp)
+			log.Printf("%s : %s(%#x)\n", name, tag.TypeMap[tag.DataType(_tp)], _tp)
+		}
+
+		if mr.GeneralStatus == 0x06 {
+			p.ListAllTags(insId + 1)
+		}
+	}
+	p.UcmmSend(3, 250, context, mr)
 }
 
 func NewOriginator(addr string, slot uint8, cfg *Config) (*plc, error) {
