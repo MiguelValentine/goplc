@@ -35,7 +35,7 @@ func test(){
 }
 ```
 
-### Config
+#### Config
 
 ```go
 import (
@@ -64,7 +64,7 @@ func test(){
 }
 ```
 
-### ListAllTags
+##### ListAllTags
 
 ```go
 import (
@@ -90,7 +90,7 @@ func testListAllTags() {
 }
 ```
 
-### ReadAndWriteTag
+#### ReadAndWriteTag
 
 ```go
 import (
@@ -124,7 +124,7 @@ func testTag() {
 }
 ```
 
-### TagGroup
+#### TagGroup
 
 ```go
 import (
@@ -157,7 +157,7 @@ func testTagGroup() {
 }
 ```
 
-### Sync
+#### Sync
 
 ```go
 import (
