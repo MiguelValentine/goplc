@@ -35,3 +35,40 @@ const (
 	STRINGI         DataType = 0xde
 	STRUCT          DataType = 0xa002
 )
+
+var TypeMap map[DataType]string
+
+func init() {
+	TypeMap = make(map[DataType]string)
+	TypeMap[NULL] = "NULL"
+	TypeMap[BOOL] = "BOOL"
+	TypeMap[SINT] = "SINT"
+	TypeMap[INT] = "INT"
+	TypeMap[DINT] = "DINT"
+	TypeMap[LINT] = "LINT"
+	TypeMap[USINT] = "USINT"
+	TypeMap[UINT] = "UINT"
+	TypeMap[UDINT] = "UDINT"
+	TypeMap[REAL] = "REAL"
+	TypeMap[LREAL] = "LREAL"
+	TypeMap[STIME] = "STIME"
+	TypeMap[DATE] = "DATE"
+	TypeMap[TIME_AND_DAY] = "TIME_AND_DAY"
+	TypeMap[DATE_AND_STRING] = "DATE_AND_STRING"
+	TypeMap[STRING] = "STRING"
+	TypeMap[WORD] = "WORD"
+	TypeMap[DWORD] = "DWORD"
+	TypeMap[BIT_STRING] = "BIT_STRING"
+	TypeMap[LWORD] = "LWORD"
+	TypeMap[STRING2] = "STRING2"
+	TypeMap[FTIME] = "FTIME"
+	TypeMap[LTIME] = "LTIME"
+	TypeMap[ITIME] = "ITIME"
+	TypeMap[STRINGN] = "STRINGN"
+	TypeMap[SHORT_STRING] = "SHORT_STRING"
+	TypeMap[TIME] = "TIME"
+	TypeMap[EPATH] = "EPATH"
+	TypeMap[ENGUNIT] = "ENGUNIT"
+	TypeMap[STRINGI] = "STRINGI"
+	TypeMap[STRUCT] = "STRUCT"
+}

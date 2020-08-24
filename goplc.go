@@ -11,6 +11,7 @@ import (
 	_type "github.com/MiguelValentine/goplc/ethernetip/type"
 	"github.com/MiguelValentine/goplc/lib"
 	"github.com/MiguelValentine/goplc/tag"
+	"github.com/MiguelValentine/goplc/tagGroup"
 	"io"
 	"math"
 	"math/rand"
@@ -220,15 +221,38 @@ func (p *plc) write() {
 	}
 }
 
-func (p *plc) ReadTag(tag *tag.Tag) {
+func (p *plc) ReadTag(tag *tag.Tag) *tag.Tag {
 	rand.Seed(time.Now().UnixNano())
 	context := _type.ULINT(rand.Uint64())
-	p.ContextPool[context] = tag.Parser
+	p.ContextPool[context] = tag.ReadTagParser
 	p.UcmmSend(3, 250, context, tag.GenerateReadMessageRequest())
+	return tag
+}
+
+func (p *plc) WriteTag(tag *tag.Tag) *tag.Tag {
+	rand.Seed(time.Now().UnixNano())
+	context := _type.ULINT(rand.Uint64())
+	p.ContextPool[context] = tag.WriteTagParser
+	p.UcmmSend(3, 250, context, tag.GenerateWriteMessageRequest())
+	return tag
+}
+
+func (p *plc) ReadTagGroup(tg *tagGroup.TagGroup) {
+	rand.Seed(time.Now().UnixNano())
+	context := _type.ULINT(rand.Uint64())
+	p.ContextPool[context] = tg.ReadTagParser
+	p.UcmmSend(3, 250, context, tg.GenerateReadMessageRequest())
+}
+
+func (p *plc) ReadTagGroupInterval(tg *tagGroup.TagGroup, d time.Duration) {
+	lib.Cron(d, func() {
+		p.ReadTagGroup(tg)
+	})
 }
 
 func NewOriginator(addr string, slot uint8, cfg *Config) (*plc, error) {
 	_plc := &plc{}
+	_plc.config = cfg
 	_plc.config = cfg
 	if _plc.config == nil {
 		_plc.config = defaultConfig

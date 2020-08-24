@@ -5,17 +5,19 @@ import (
 	"github.com/MiguelValentine/goplc/ethernetip/commonIndustrialProtocol"
 	"github.com/MiguelValentine/goplc/ethernetip/commonIndustrialProtocol/segment/epath"
 	"github.com/MiguelValentine/goplc/lib"
-	"log"
 )
 
 const ServiceReadTag = commonIndustrialProtocol.Service(0x4c)
+const ServiceWriteTag = commonIndustrialProtocol.Service(0x4d)
 
 type Tag struct {
 	name      []byte
 	readCount uint16
 	xtype     DataType
 	value     []byte
-	Onchange  func(interface{})
+	OnChange  func(interface{})
+	OnData    func(interface{})
+	next      func()
 }
 
 func (t *Tag) GenerateReadMessageRequest() *commonIndustrialProtocol.MessageRouterRequest {
@@ -30,15 +32,60 @@ func (t *Tag) GenerateReadMessageRequest() *commonIndustrialProtocol.MessageRout
 	return mr
 }
 
-func (t *Tag) Parser(mr *commonIndustrialProtocol.MessageRouterResponse) {
-	log.Printf("%+v\n", mr)
+func (t *Tag) GenerateWriteMessageRequest() *commonIndustrialProtocol.MessageRouterRequest {
+	mr := &commonIndustrialProtocol.MessageRouterRequest{}
+	mr.Service = ServiceWriteTag
+	mr.RequestPath = epath.DataBuild(epath.DataTypeANSI, t.name, true)
+
+	data := new(bytes.Buffer)
+	lib.WriteByte(data, t.xtype)
+	lib.WriteByte(data, t.readCount)
+	lib.WriteByte(data, t.GetValue())
+	mr.RequestData = data.Bytes()
+
+	return mr
+}
+
+func (t *Tag) ReadTagParser(mr *commonIndustrialProtocol.MessageRouterResponse) {
 	dataReader := bytes.NewReader(mr.ResponseData)
 	lib.ReadByte(dataReader, &t.xtype)
-	t.value = make([]byte, dataReader.Len())
-	lib.ReadByte(dataReader, t.value)
-	if t.Onchange != nil {
-		t.Onchange(t.GetValue())
+	newValue := make([]byte, dataReader.Len())
+	lib.ReadByte(dataReader, newValue)
+
+	if t.OnChange != nil && bytes.Compare(t.value, newValue) != 0 {
+		t.value = newValue
+		t.OnChange(t.GetValue())
 	}
+
+	if t.OnData != nil {
+		t.OnData(t.GetValue())
+	}
+
+	if t.next != nil {
+		f := t.next
+		t.next = nil
+		f()
+	}
+}
+
+func (t *Tag) WriteTagParser(mr *commonIndustrialProtocol.MessageRouterResponse) {
+	if t.next != nil {
+		f := t.next
+		t.next = nil
+		f()
+	}
+}
+
+func (t *Tag) Then(f func()) {
+	t.next = f
+}
+
+func (t *Tag) Type() string {
+	return TypeMap[t.xtype]
+}
+
+func (t *Tag) Name() string {
+	return string(t.name)
 }
 
 func NewTag(name string) *Tag {
@@ -63,8 +110,6 @@ func (t *Tag) GetValue() interface{} {
 	switch t.xtype {
 	case NULL:
 		return nil
-	//case BOOL:
-	//return 0xFF == t.Value[0]
 	case SINT:
 		result := int8(0)
 		lib.ReadByte(reader, &result)
@@ -83,5 +128,29 @@ func (t *Tag) GetValue() interface{} {
 		return result
 	default:
 		return nil
+	}
+}
+
+func (t *Tag) SetValue(data interface{}) {
+	writer := new(bytes.Buffer)
+
+	switch t.xtype {
+	case NULL:
+	case SINT:
+		result := data.(int8)
+		lib.WriteByte(writer, &result)
+	case INT:
+		result := data.(int16)
+		lib.WriteByte(writer, &result)
+	case DINT:
+		result := data.(int32)
+		lib.WriteByte(writer, &result)
+	case LINT:
+		result := data.(int64)
+		lib.WriteByte(writer, &result)
+	}
+
+	if writer.Len() > 0 {
+		t.value = writer.Bytes()
 	}
 }
