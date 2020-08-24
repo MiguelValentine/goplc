@@ -25,11 +25,11 @@ import (
 
 func test(){
     //IP Slot Config
-	plc, _ := NewOriginator("1.1.1.1", 1, nil)
-	plc.OnConnected = func() {
-		log.Printf("%+v\n",plc.Controller)
+    plc, _ := NewOriginator("1.1.1.1", 1, nil)
+    plc.OnConnected = func() {
+        log.Printf("%+v\n",plc.Controller)
         // &{VendorID:1 DeviceType:14 ProductCode:53 Major:32 Minor:11 Status:12400 SerialNumber:1881423856 Version:32.11 Name:Emulator R32.11}
-	}
+    }
     
     _ = plc.Connect()
 }
@@ -54,11 +54,11 @@ func test(){
     //default 0xAF12
     cfg.Port = 1111
 
-	plc, _ := NewOriginator("1.1.1.1", 1, cfg)
-	plc.OnConnected = func() {
-		log.Printf("%+v\n",plc.Controller)
+    plc, _ := NewOriginator("1.1.1.1", 1, cfg)
+    plc.OnConnected = func() {
+        log.Printf("%+v\n",plc.Controller)
         // &{VendorID:1 DeviceType:14 ProductCode:53 Major:32 Minor:11 Status:12400 SerialNumber:1881423856 Version:32.11 Name:Emulator R32.11}
-	}
+    }
     
     _ = plc.Connect()
 }
@@ -72,10 +72,10 @@ import (
 )
 
 func testListAllTags() {
-	cfg := DefaultConfig()
-	plc, _ := NewOriginator("1.1.1.1", 1, cfg)
-	plc.OnConnected = func() {
-		plc.ListAllTags(0)
+    cfg := DefaultConfig()
+    plc, _ := NewOriginator("1.1.1.1", 1, cfg)
+    plc.OnConnected = func() {
+        plc.ListAllTags(0)
         //  2020/08/24 17:20:10 Map:Local : (0x1069)
         //  2020/08/24 17:20:10 Task:MainTask : (0x1070)
         //  2020/08/24 17:20:10 Program:MainProgram : (0x1068)
@@ -84,9 +84,9 @@ func testListAllTags() {
         //  2020/08/24 17:20:10 TESTC : DINT(0xc4)
         //  2020/08/24 17:20:10 TESTD : REAL(0xca)
         //  2020/08/24 17:20:10 TESTE : (0x8fce)
-	}
+    }
 
-	_ = plc.Connect()
+    _ = plc.Connect()
 }
 ```
 
@@ -99,28 +99,28 @@ import (
 )
 
 func testTag() {
-	tagA := tag.NewTag("TESTA")
+    tagA := tag.NewTag("TESTA")
 
     //OnData will be called every time you sync
     //Try to use OnChange if not necessary
-	tagA.OnData = func(value interface{}) {
-		log.Println(value)
+    tagA.OnData = func(value interface{}) {
+        log.Println(value)
         //1237
         //1238
-	}
+    }
 
-	plc, _ := NewOriginator("1.1.1.1", 1, nil)
-	plc.OnConnected = func() {
-		log.Printf("%+v\n", plc.Controller)
-		plc.ReadTag(tagA).Then(func() {
-			tagA.SetValue(int32(1238))
-			plc.WriteTag(tagA).Then(func() {
-				plc.ReadTag(tagA)
-			})
-		})
-	}
+    plc, _ := NewOriginator("1.1.1.1", 1, nil)
+    plc.OnConnected = func() {
+        log.Printf("%+v\n", plc.Controller)
+        plc.ReadTag(tagA).Then(func() {
+            tagA.SetValue(int32(1238))
+            plc.WriteTag(tagA).Then(func() {
+                plc.ReadTag(tagA)
+            })
+        })
+    }
 
-	_ = plc.Connect()
+    _ = plc.Connect()
 }
 ```
 
@@ -130,30 +130,30 @@ func testTag() {
 import (
     "github.com/MiguelValentine/goplc"
     "github.com/MiguelValentine/goplc/tag"
-	"github.com/MiguelValentine/goplc/tagGroup"
+    "github.com/MiguelValentine/goplc/tagGroup"
 )
 
 func testTagGroup() {
-	cfg := DefaultConfig()
+    cfg := DefaultConfig()
 
-	tagA := tag.NewTag("TESTA")
-	tagA.OnChange = func(value interface{}) {
-		log.Println(value)
-	}
-	tagB := tag.NewTag("TESTB")
-	tagB.OnChange = func(value interface{}) {
-		log.Println(value)
-	}
-	tg := &tagGroup.TagGroup{}
-	tg.Add(tagA)
-	tg.Add(tagB)
+    tagA := tag.NewTag("TESTA")
+    tagA.OnChange = func(value interface{}) {
+        log.Println(value)
+    }
+    tagB := tag.NewTag("TESTB")
+    tagB.OnChange = func(value interface{}) {
+        log.Println(value)
+    }
+    tg := &tagGroup.TagGroup{}
+    tg.Add(tagA)
+    tg.Add(tagB)
 
-	plc, _ := NewOriginator("1.1.1.1", 1, cfg)
-	plc.OnConnected = func() {
-		plc.ReadTagGroup(tg)
-	}
+    plc, _ := NewOriginator("1.1.1.1", 1, cfg)
+    plc.OnConnected = func() {
+        plc.ReadTagGroup(tg)
+    }
 
-	_ = plc.Connect()
+    _ = plc.Connect()
 }
 ```
 
@@ -163,32 +163,32 @@ func testTagGroup() {
 import (
     "github.com/MiguelValentine/goplc"
     "github.com/MiguelValentine/goplc/tag"
-	"github.com/MiguelValentine/goplc/tagGroup"
+    "github.com/MiguelValentine/goplc/tagGroup"
 )
 
 func testTagGroup() {
-	cfg := DefaultConfig()
+    cfg := DefaultConfig()
 
-	tagA := tag.NewTag("TESTA")
-	tagA.OnChange = func(value interface{}) {
-		log.Printf("%s => %f\n", tagA.Name(), value)
-	}
+    tagA := tag.NewTag("TESTA")
+    tagA.OnChange = func(value interface{}) {
+        log.Printf("%s => %f\n", tagA.Name(), value)
+    }
 
-	tagB := tag.NewTag("TESTB")
-	tagB.OnChange = func(value interface{}) {
-		log.Printf("%s => %f\n", tagB.Name(), value)
-	}
-	tg := &tagGroup.TagGroup{}
-	tg.Add(tagA)
-	tg.Add(tagB)
+    tagB := tag.NewTag("TESTB")
+    tagB.OnChange = func(value interface{}) {
+        log.Printf("%s => %f\n", tagB.Name(), value)
+    }
+    tg := &tagGroup.TagGroup{}
+    tg.Add(tagA)
+    tg.Add(tagB)
 
-	plc, _ := NewOriginator("1.1.1.1", 1, cfg)
-	plc.OnConnected = func() {
+    plc, _ := NewOriginator("1.1.1.1", 1, cfg)
+    plc.OnConnected = func() {
         //setTimeInterval
-		plc.ReadTagGroupInterval(tg, time.Millisecond*50)
-	}
+        plc.ReadTagGroupInterval(tg, time.Millisecond*50)
+    }
 
-	_ = plc.Connect()
+    _ = plc.Connect()
 }
 ```
 
