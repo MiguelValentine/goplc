@@ -8,6 +8,8 @@
 
 A golang based API(Originator) for interfacing with Rockwell Control/CompactLogix PLCs.
 
+**NOTE:** goplc running in a single go route and never block your process, you need to block it by other way.
+
 ## Thanks
 
 <a href="https://github.com/cmseaton42/node-ethernet-ip">node-ethernet-ip</a> project gave me a lot of inspiration.
