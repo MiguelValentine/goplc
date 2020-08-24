@@ -92,6 +92,8 @@ func testListAllTags() {
 
 #### ReadAndWriteTag
 
+**NOTE:** Currently, the `Tag` Class only supports *Atomic* datatypes(SINT, INT, DINT, REAL, BOOL) and String Read(not support string write).support for ARRAY, and UDTs are in the plans and coming soon!
+
 ```go
 import (
     "github.com/MiguelValentine/goplc"
