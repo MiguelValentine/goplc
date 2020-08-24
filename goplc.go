@@ -105,11 +105,11 @@ func (p *plc) disconnected(err error) {
 }
 
 func (p *plc) read() {
-	//defer func() {
-	//	if err := recover(); err != nil {
-	//		go p.disconnected(err.(error))
-	//	}
-	//}()
+	defer func() {
+		if err := recover(); err != nil {
+			go p.disconnected(err.(error))
+		}
+	}()
 
 	buf := make([]byte, 1024*64)
 	var err error
