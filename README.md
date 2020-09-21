@@ -1,3 +1,5 @@
+# Repositorie moved to [go-cip](https://github.com/loki-os/go-cip)
+
 <div align="center">
     <img src="https://img.shields.io/github/go-mod/go-version/MiguelValentine/goplc?style=flat-square" alt="golang version">
     <img src="https://img.shields.io/github/license/MiguelValentine/goplc?style=flat-square" alt="MIT license"/>
